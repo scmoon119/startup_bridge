@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:async';
-import 'screens/signup_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'services/auth_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,145 +13,78 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'StartupBridge',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AuthWrapper(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  String _healthStatus = '';
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+  String? _userName;
 
   @override
   void initState() {
     super.initState();
-    _checkHealthStatus();
+    _checkAuthStatus();
   }
 
-  Future<void> _checkHealthStatus() async {
+  Future<void> _checkAuthStatus() async {
     try {
-      final response = await http.get(
-        Uri.parse('http://127.0.0.1:8080/api/health'),
-      );
-      if (response.statusCode == 200) {
+      final isLoggedIn = await AuthService.isLoggedIn();
+      if (isLoggedIn) {
+        final userName = await AuthService.getUserName();
         setState(() {
-          _healthStatus = response.body;
+          _isLoggedIn = true;
+          _userName = userName;
+          _isLoading = false;
         });
       } else {
         setState(() {
-          _healthStatus = 'Error: ${response.statusCode}';
+          _isLoggedIn = false;
+          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _healthStatus = 'Connection Error';
+        _isLoggedIn = false;
+        _isLoading = false;
       });
     }
   }
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Stack(
-        children: [
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: _healthStatus == 'OK'
-                    ? Colors.green.shade100
-                    : Colors.red.shade100,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _healthStatus == 'OK' ? Colors.green : Colors.red,
-                ),
-              ),
-              child: Text(
-                _healthStatus.isEmpty ? 'Loading...' : _healthStatus,
-                style: TextStyle(
-                  color: _healthStatus == 'OK'
-                      ? Colors.green.shade800
-                      : Colors.red.shade800,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('로딩 중...'),
+            ],
           ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Column(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SignupScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.person_add),
-                          iconSize: 48,
-                          color: Colors.blue,
-                        ),
-                        const Text('계정 생성'),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.login),
-                          iconSize: 48,
-                          color: Colors.green,
-                        ),
-                        const Text('로그인'),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
+
+    if (_isLoggedIn && _userName != null) {
+      return DashboardScreen(userName: _userName!);
+    } else {
+      return const LoginScreen();
+    }
   }
 }
