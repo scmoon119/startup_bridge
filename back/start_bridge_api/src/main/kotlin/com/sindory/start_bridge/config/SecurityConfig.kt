@@ -9,7 +9,7 @@ import org.springframework.security.web.SecurityFilterChain
 @Configuration
 @EnableWebSecurity
 class SecurityConfig {
-
+// for test commit
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
